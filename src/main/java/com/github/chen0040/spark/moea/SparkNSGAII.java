@@ -3,14 +3,22 @@ package com.github.chen0040.spark.moea;
 
 import com.github.chen0040.data.utils.TupleTwo;
 import com.github.chen0040.moea.components.*;
+import com.github.chen0040.moea.enums.CrossoverType;
+import com.github.chen0040.moea.enums.MutationType;
 import com.github.chen0040.moea.enums.ReplacementType;
+import com.github.chen0040.moea.utils.CostFunction;
 import com.github.chen0040.moea.utils.InvertedCompareUtils;
 import com.github.chen0040.moea.utils.TournamentSelection;
 import com.github.chen0040.moea.utils.TournamentSelectionResult;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 /**
@@ -32,18 +40,19 @@ public class SparkNSGAII extends Mediator {
    @Setter(AccessLevel.NONE)
    protected NondominatedSortingPopulation population = new NondominatedSortingPopulation();
 
-   @Setter(AccessLevel.NONE)
-   private JavaSparkContext context;
 
-   public SparkNSGAII(JavaSparkContext context){
-      this.context = context;
+   private int partitionCount = 50;
+
+   private Broadcast<Mediator> mediatorBroadcast;
+
+   public SparkNSGAII(){
    }
 
-   public NondominatedPopulation solve(){
-      initialize();
+   public NondominatedPopulation solve(JavaSparkContext context){
+      initialize(context);
       int maxGenerations = this.getMaxGenerations();
       for(int generation = 0; generation < maxGenerations; ++generation) {
-         evolve();
+         evolve(context);
          if(displayEvery > 0 && generation % displayEvery == 0){
             System.out.println("Generation #" + generation + "\tArchive size: " + archive.size());
          }
@@ -52,18 +61,40 @@ public class SparkNSGAII extends Mediator {
       return archive;
    }
 
-   public void initialize(){
+   public void initialize(JavaSparkContext context){
       archive.setMediator(this);
       archive.clear();
 
       population.setMediator(this);
       population.initialize();
-      evaluate(population);
+      evaluate(population, context);
       population.sort();
       currentGeneration = 0;
+
+
    }
 
-   public void evolve()
+   public Mediator mediator(){
+      Mediator mediator = new Mediator();
+      mediator.setObjectiveCount(getObjectiveCount());
+      mediator.setDimension(getDimension());
+      mediator.setMaxArchive(getMaxArchive());
+      mediator.setMaxGenerations(getMaxGenerations());
+      mediator.setLowerBounds(getLowerBounds());
+      mediator.setUpperBounds(getUpperBounds());
+      mediator.setRandomGenerator(getRandomGenerator());
+      mediator.setMutationRate(getMutationRate());
+      mediator.setCrossoverType(getCrossoverType());
+      mediator.setCrossoverRate(getCrossoverRate());
+      mediator.setCostFunction(getCostFunction());
+      mediator.setPopulationSize(getPopulationSize());
+      mediator.setMutationType(getMutationType());
+      mediator.setReplacementType(getReplacementType());
+      mediator.setInterpolation4DE(getInterpolation4DE());
+      return mediator;
+   }
+
+   public void evolve(JavaSparkContext context)
    {
       Population offspring = new Population();
       offspring.setMediator(this);
@@ -97,7 +128,7 @@ public class SparkNSGAII extends Mediator {
          offspring.add(children._2());
       }
 
-      evaluate(offspring);
+      evaluate(offspring, context);
 
       ReplacementType replacementType = this.getReplacementType();
       if(replacementType == ReplacementType.Generational) {
@@ -109,12 +140,26 @@ public class SparkNSGAII extends Mediator {
       currentGeneration++;
    }
 
-   protected void evaluate(Population population) {
+   protected void evaluate(Population population, JavaSparkContext context) {
+
+      if(mediatorBroadcast == null) {
+         mediatorBroadcast = context.broadcast(mediator());
+      }
+
+      JavaRDD<Solution> solutionJavaRDD = context.parallelize(population.getSolutions());
+      solutionJavaRDD.coalesce(partitionCount);
+
+      List<Solution> solutions = solutionJavaRDD.map(s -> {
+         s.evaluate(mediatorBroadcast.getValue());
+         return s;
+      }).collect();
+
+      population.getSolutions().clear();
+      population.getSolutions().addAll(solutions);
 
       for (int i = 0; i < population.size(); ++i)
       {
          Solution s = population.getSolutions().get(i);
-         s.evaluate(this);
 
          //System.out.println("cost1: " + s.getCost(0) + "\tcost2:" + s.getCost(1));
 

@@ -19,13 +19,9 @@ import java.util.Set;
 public class SparkGDE3 extends SparkNSGAII {
    private static final long serialVersionUID = -6713947168965879195L;
 
-   public SparkGDE3(JavaSparkContext context) {
-      super(context);
-   }
-
 
    @Override
-   public void evolve()
+   public void evolve(JavaSparkContext context)
    {
       int index = 0;
       int populationSize = getPopulationSize();
@@ -56,7 +52,7 @@ public class SparkGDE3 extends SparkNSGAII {
          }
       }
 
-      evaluate(children);
+      evaluate(children, context);
 
       merge2(children);
 

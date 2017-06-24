@@ -39,8 +39,8 @@
     </issueManagement>
 
 
-    <name>Recommender Algorithms for Spark</name>
-    <description>Recommender algorithms implemented in Java and for Spark</description>
+    <name>Multi-Objective Evolutionary Computation for Spark Distributed Optimization</name>
+    <description>Spark implementation of Multi-Objective Evolutionary Computation Framework for Distributed Computing Numerical Optimization</description>
     <url>https://github.com/chen0040/spark-opt-moea</url>
 
     <distributionManagement>
@@ -539,7 +539,7 @@
         <dependency>
             <groupId>com.github.chen0040</groupId>
             <artifactId>java-moea</artifactId>
-            <version>1.0.4</version>
+            <version>1.0.5</version>
         </dependency>
     </dependencies>
 </project>
