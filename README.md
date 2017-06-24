@@ -19,8 +19,8 @@ Add the follow dependency to your POM file:
 ```xml
 <dependency>
   <groupId>com.github.chen0040</groupId>
-  <artifactId>java-moea</artifactId>
-  <version>1.0.5</version>
+  <artifactId>spark-opt-moea</artifactId>
+  <version>1.0.1</version>
 </dependency>
 ```
 
