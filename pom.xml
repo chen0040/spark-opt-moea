@@ -535,5 +535,11 @@
                 </exclusion>
             </exclusions>
         </dependency>
+
+        <dependency>
+            <groupId>com.github.chen0040</groupId>
+            <artifactId>java-moea</artifactId>
+            <version>1.0.4</version>
+        </dependency>
     </dependencies>
 </project>
